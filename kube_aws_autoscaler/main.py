@@ -80,7 +80,7 @@ def is_node_ready(node):
     return False
 
 
-def get_nodes(api, include_master_nodes: bool=False) -> dict:
+def get_nodes(api) -> dict:
     nodes = {}
     for node in pykube.Node.objects(api):
         region = node.labels['failure-domain.beta.kubernetes.io/region']
@@ -96,14 +96,12 @@ def get_nodes(api, include_master_nodes: bool=False) -> dict:
                'region': region, 'zone': zone, 'instance_id': instance_id, 'instance_type': instance_type,
                'allocatable': allocatable,
                'ready': is_node_ready(node),
-               'unschedulable': node.obj['spec'].get('unschedulable', False),
-               'master': node.labels.get('master', 'false') == 'true'}
-        if include_master_nodes or not obj['master']:
-            nodes[node.name] = obj
+               'unschedulable': node.obj['spec'].get('unschedulable', False)}
+        nodes[node.name] = obj
     return nodes
 
 
-def get_nodes_by_asg_zone(autoscaling, nodes: dict) -> dict:
+def get_nodes_by_asg_zone(autoscaling, nodes: dict, asg: str) -> dict:
     # first map instance_id to node object for later look up
     instances = {}
     for node in nodes.values():
@@ -111,12 +109,15 @@ def get_nodes_by_asg_zone(autoscaling, nodes: dict) -> dict:
 
     nodes_by_asg_zone = collections.defaultdict(list)
 
+    logger.info('Filterring out ASG:{}'.format(asg))
     response = autoscaling.describe_auto_scaling_instances(InstanceIds=list(instances.keys()))
     for instance in response['AutoScalingInstances']:
-        instances[instance['InstanceId']]['asg_name'] = instance['AutoScalingGroupName']
-        instances[instance['InstanceId']]['asg_lifecycle_state'] = instance['LifecycleState']
-        key = instance['AutoScalingGroupName'], instance['AvailabilityZone']
-        nodes_by_asg_zone[key].append(instances[instance['InstanceId']])
+        logger.debug('Instance: {}'.format(instance))
+        if instance['AutoScalingGroupName'] == asg:
+            instances[instance['InstanceId']]['asg_name'] = instance['AutoScalingGroupName']
+            instances[instance['InstanceId']]['asg_lifecycle_state'] = instance['LifecycleState']
+            key = instance['AutoScalingGroupName'], instance['AvailabilityZone']
+            nodes_by_asg_zone[key].append(instances[instance['InstanceId']])
     return nodes_by_asg_zone
 
 
@@ -318,14 +319,18 @@ def get_ready_nodes_by_asg(nodes_by_asg_zone):
     return ready_nodes_by_asg
 
 
-def autoscale(buffer_percentage: dict, buffer_fixed: dict, buffer_spare_nodes: int=0, include_master_nodes: bool=False, dry_run: bool=False):
+def autoscale(buffer_percentage: dict, buffer_fixed: dict, asg: str, buffer_spare_nodes: int=0, dry_run: bool=False):
     api = get_kube_api()
 
-    all_nodes = get_nodes(api, include_master_nodes)
+    all_nodes = get_nodes(api)
     region = list(all_nodes.values())[0]['region']
 
     autoscaling = boto3.client('autoscaling', region)
-    nodes_by_asg_zone = get_nodes_by_asg_zone(autoscaling, all_nodes)
+    nodes_by_asg_zone = get_nodes_by_asg_zone(autoscaling, all_nodes, asg)
+
+    if len(nodes_by_asg_zone) == 0:
+        raise ValueError('ASG: {} returned 0 nodes!'.format(asg))
+
     # we only consider nodes found in an ASG (old "ghost" nodes returned from Kubernetes API are ignored)
     nodes_by_name = get_nodes_by_name(itertools.chain(*nodes_by_asg_zone.values()))
 
@@ -342,11 +347,10 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--dry-run', help='Dry run mode: do not change anything, just print what would be done',
                         action='store_true')
+    parser.add_argument('--asg', help='AWS autoscaling group', required=True)
     parser.add_argument('--debug', '-d', help='Debug mode: print more information', action='store_true')
     parser.add_argument('--once', help='Run loop only once and exit', action='store_true')
     parser.add_argument('--interval', type=int, help='Loop interval (default: 60s)', default=60)
-    parser.add_argument('--include-master-nodes', help='Do not ignore auto scaling group with master nodes',
-                        action='store_true')
     parser.add_argument('--buffer-spare-nodes', type=int,
                         help='Number of extra "spare" nodes to provision per ASG/AZ (default: 1)', default=1)
     for resource in RESOURCES:
@@ -370,8 +374,7 @@ def main():
 
     while True:
         try:
-            autoscale(buffer_percentage, buffer_fixed, buffer_spare_nodes=args.buffer_spare_nodes,
-                      include_master_nodes=args.include_master_nodes, dry_run=args.dry_run)
+            autoscale(buffer_percentage, buffer_fixed, asg=args.asg, buffer_spare_nodes=args.buffer_spare_nodes, dry_run=args.dry_run)
         except:
             logger.exception('Failed to autoscale')
         if args.once:

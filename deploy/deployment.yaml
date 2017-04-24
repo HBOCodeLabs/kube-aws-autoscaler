@@ -5,6 +5,7 @@ metadata:
     application: kube-aws-autoscaler
     version: v0.0.1
   name: kube-aws-autoscaler
+  namespace: kube-system
 spec:
   replicas: 1
   selector:
@@ -16,12 +17,10 @@ spec:
         application: kube-aws-autoscaler
         version: v0.0.1
       annotations:
-        # FIXME: using hardcoded IAM role
-        iam.amazonaws.com/role: kube-1-app-autoscaler
     spec:
       containers:
       - name: autoscaler
-        image: hjacobs/kube-aws-autoscaler
+        image: 971383676178.dkr.ecr.us-east-1.amazonaws.com/kube-aws-autoscaler:0.7-2-gf9ea901-dirty
         imagePullPolicy: Always
         resources:
           limits:
@@ -30,3 +29,9 @@ spec:
           requests:
             cpu: 50m
             memory: 50Mi
+        args:
+        - "--debug"
+        - "--asg"
+        - "tf-asg-20170112181758063213024i4h"
+        - "--buffer-cpu-percentage"
+        - "50"

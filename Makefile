@@ -1,6 +1,6 @@
 .PHONY: test docker push
 
-IMAGE            ?= hjacobs/kube-aws-autoscaler
+IMAGE            ?= 971383676178.dkr.ecr.us-east-1.amazonaws.com/kube-aws-autoscaler
 VERSION          ?= $(shell git describe --tags --always --dirty)
 TAG              ?= $(VERSION)
 GITHEAD          = $(shell git rev-parse --short HEAD)
