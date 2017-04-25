@@ -1,3 +1,6 @@
+**NOTE** This is a fork of https://github.com/hjacobs/kube-aws-autoscaler and could drift from the origina.
+Please see original repo for the latest changes.
+
 =================================
 Kubernetes AWS Cluster Autoscaler
 =================================
@@ -85,6 +88,10 @@ See below for optional configuration parameters.
 Configuration
 =============
 
+The following command line options are required:
+``--asg``
+	AWS Autoscaling Group Name
+
 The following command line options are supported:
 
 ``--buffer-cpu-percentage``
@@ -101,8 +108,6 @@ The following command line options are supported:
     Extra number of pods to overprovision for, defaults to 10.
 ``--buffer-spare-nodes``
     Number of extra "spare" nodes to provision per ASG/AZ, defaults to 1.
-``--include-master-nodes``
-    Do not ignore auto scaling group with master nodes.
 ``--interval``
     Time to sleep between runs in seconds, defaults to 60 seconds.
 ``--once``

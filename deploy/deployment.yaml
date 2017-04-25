@@ -3,8 +3,9 @@ kind: Deployment
 metadata:
   labels:
     application: kube-aws-autoscaler
-    version: v0.0.1
+    version: v0.7.1
   name: kube-aws-autoscaler
+  namespace: kube-system
 spec:
   replicas: 1
   selector:
@@ -14,14 +15,25 @@ spec:
     metadata:
       labels:
         application: kube-aws-autoscaler
-        version: v0.0.1
-      annotations:
-        # FIXME: using hardcoded IAM role
-        iam.amazonaws.com/role: kube-1-app-autoscaler
+        version: 0.0.1
     spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/role
+                operator: In
+                values:
+                - master
+      tolerations:
+      - key: dedicated
+        operator: Equal
+        value: master
+        effect: NoSchedule
       containers:
       - name: autoscaler
-        image: hjacobs/kube-aws-autoscaler
+        image: 971383676178.dkr.ecr.us-east-1.amazonaws.com/kube-aws-autoscaler:[tag]
         imagePullPolicy: Always
         resources:
           limits:
@@ -30,3 +42,6 @@ spec:
           requests:
             cpu: 50m
             memory: 50Mi
+        args:
+        - "--asg"
+        - "asg group name"
