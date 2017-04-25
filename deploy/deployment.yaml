@@ -3,7 +3,7 @@ kind: Deployment
 metadata:
   labels:
     application: kube-aws-autoscaler
-    version: v0.0.1
+    version: v0.7.1
   name: kube-aws-autoscaler
   namespace: kube-system
 spec:
@@ -15,12 +15,25 @@ spec:
     metadata:
       labels:
         application: kube-aws-autoscaler
-        version: v0.0.1
-      annotations:
+        version: 0.0.1
     spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/role
+                operator: In
+                values:
+                - master
+      tolerations:
+      - key: dedicated
+        operator: Equal
+        value: master
+        effect: NoSchedule
       containers:
       - name: autoscaler
-        image: 971383676178.dkr.ecr.us-east-1.amazonaws.com/kube-aws-autoscaler:0.7-2-gf9ea901-dirty
+        image: 971383676178.dkr.ecr.us-east-1.amazonaws.com/kube-aws-autoscaler:[tag]
         imagePullPolicy: Always
         resources:
           limits:
@@ -30,8 +43,5 @@ spec:
             cpu: 50m
             memory: 50Mi
         args:
-        - "--debug"
         - "--asg"
-        - "tf-asg-20170112181758063213024i4h"
-        - "--buffer-cpu-percentage"
-        - "50"
+        - "asg group name"
