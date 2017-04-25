@@ -108,7 +108,8 @@ The following command line options are supported:
     Extra number of pods to overprovision for, defaults to 10.
 ``--buffer-spare-nodes``
     Number of extra "spare" nodes to provision per ASG/AZ, defaults to 1.
-:strike:``--include-master-nodes``
+.. raw:: html
+<s>``--include-master-nodes``</s>
     Do not ignore auto scaling group with master nodes.
 ``--interval``
     Time to sleep between runs in seconds, defaults to 60 seconds.

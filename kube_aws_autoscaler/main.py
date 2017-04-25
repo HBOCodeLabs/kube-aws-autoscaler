@@ -109,7 +109,7 @@ def get_nodes_by_asg_zone(autoscaling, nodes: dict, asg: str) -> dict:
 
     nodes_by_asg_zone = collections.defaultdict(list)
 
-    logger.info('Filterring out ASG:{}'.format(asg))
+    logger.info('Filtering out ASG:{}'.format(asg))
     response = autoscaling.describe_auto_scaling_instances(InstanceIds=list(instances.keys()))
     for instance in response['AutoScalingInstances']:
         logger.debug('Instance: {}'.format(instance))
