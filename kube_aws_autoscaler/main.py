@@ -100,6 +100,10 @@ def get_nodes(api) -> dict:
         nodes[node.name] = obj
     return nodes
 
+def chunks(l, n):
+    """Yield successive n-sized chunks from l."""
+    for i in range(0, len(l), n):
+        yield l[i:i + n]
 
 def get_nodes_by_asg_zone(autoscaling, nodes: dict, asg: str) -> dict:
     # first map instance_id to node object for later look up
@@ -110,14 +114,18 @@ def get_nodes_by_asg_zone(autoscaling, nodes: dict, asg: str) -> dict:
     nodes_by_asg_zone = collections.defaultdict(list)
 
     logger.info('Filtering out ASG:{}'.format(asg))
-    response = autoscaling.describe_auto_scaling_instances(InstanceIds=list(instances.keys()))
-    for instance in response['AutoScalingInstances']:
-        logger.debug('Instance: {}'.format(instance))
-        if instance['AutoScalingGroupName'] == asg:
-            instances[instance['InstanceId']]['asg_name'] = instance['AutoScalingGroupName']
-            instances[instance['InstanceId']]['asg_lifecycle_state'] = instance['LifecycleState']
-            key = instance['AutoScalingGroupName'], instance['AvailabilityZone']
-            nodes_by_asg_zone[key].append(instances[instance['InstanceId']])
+    logger.debug('All instances: {}'.format(instances.keys()))
+    """boto can all describe 50 instances at the time!"""
+    for group in chunks(list(instances.keys()),50):
+        logger.debug('Group: {}'.format(group))
+        response = autoscaling.describe_auto_scaling_instances(InstanceIds=group)
+        for instance in response['AutoScalingInstances']:
+            logger.debug('Instance: {}'.format(instance))
+            if instance['AutoScalingGroupName'] == asg:
+                instances[instance['InstanceId']]['asg_name'] = instance['AutoScalingGroupName']
+                instances[instance['InstanceId']]['asg_lifecycle_state'] = instance['LifecycleState']
+                key = instance['AutoScalingGroupName'], instance['AvailabilityZone']
+                nodes_by_asg_zone[key].append(instances[instance['InstanceId']])
     return nodes_by_asg_zone
 
 
