@@ -223,7 +223,7 @@ def calculate_required_auto_scaling_group_sizes(nodes_by_asg_zone: dict, usage_b
         for node in nodes:
             # compensate any manually cordoned nodes (e.g. by kubectl drain)
             # but only if they are "in service", i.e. not being terminated by ASG right now
-            if node['unschedulable'] and not node['master'] and node['asg_lifecycle_state'] == 'InService':
+            if node['unschedulable'] and node['asg_lifecycle_state'] == 'InService':
                 logger.info('Node {} is marked as unschedulable, compensating.'.format(node['name']))
                 required_nodes += 1
 
