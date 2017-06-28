@@ -2,7 +2,7 @@
 
 IMAGE            ?= 971383676178.dkr.ecr.us-east-1.amazonaws.com/kube-aws-autoscaler
 VERSION          ?= $(shell git describe --tags --always --dirty)
-TAG              ?= 0.9.2
+TAG              ?= 0.9.3
 GITHEAD          = $(shell git rev-parse --short HEAD)
 GITURL           = $(shell git config --get remote.origin.url)
 GITSTATU         = $(shell git status --porcelain || echo "no changes")
